@@ -1,0 +1,94 @@
+[
+  {
+    "id": "latest_order",
+    "query": "我的最新订单在哪里？",
+    "expected_intent": "order_tracking",
+    "expected_order_id": "ORD10002",
+    "required_tools": ["get_order"],
+    "must_contain": ["ORD10002"],
+    "must_not_contain": ["已发货", "在途"]
+  },
+  {
+    "id": "delayed_shipment",
+    "query": "为什么 ORD10001 还没送到？",
+    "expected_intent": "delivery_delay",
+    "expected_order_id": "ORD10001",
+    "required_tools": ["get_delivery"],
+    "must_contain": ["DELAYED", "ORD10001"],
+    "must_not_contain": []
+  },
+  {
+    "id": "return_after_30_days",
+    "query": "签收超过 30 天还能退货吗？",
+    "expected_intent": "return_policy",
+    "expected_order_id": null,
+    "required_tools": [],
+    "must_contain": ["7"],
+    "must_not_contain": ["ORD"]
+  },
+  {
+    "id": "refund_status",
+    "query": "我的退款怎么还没到账？",
+    "expected_intent": "refund_status",
+    "expected_order_id": "ORD10003",
+    "required_tools": ["get_refund"],
+    "must_contain": ["PROCESSING"],
+    "must_not_contain": ["已取消"]
+  },
+  {
+    "id": "cancelled_eta",
+    "query": "ORD10004 什么时候能送到？",
+    "expected_intent": "delivery_eta",
+    "expected_order_id": "ORD10004",
+    "required_tools": ["get_order"],
+    "must_contain": ["取消"],
+    "must_not_contain": ["预计送达"]
+  },
+  {
+    "id": "payment_failed",
+    "query": "ORD10002 为什么付款失败？",
+    "expected_intent": "payment_failed",
+    "expected_order_id": "ORD10002",
+    "required_tools": ["get_order"],
+    "must_contain": ["FAILED"],
+    "must_not_contain": ["已签收"]
+  },
+  {
+    "id": "complaint",
+    "query": "我要投诉，给我找你们经理。",
+    "expected_intent": "complaint",
+    "expected_order_id": null,
+    "required_tools": [],
+    "must_contain": ["人工"],
+    "must_not_contain": []
+  },
+  {
+    "id": "refund_policy",
+    "query": "退款一般几天能到账？",
+    "expected_intent": "refund_policy",
+    "expected_order_id": null,
+    "required_tools": [],
+    "must_contain": ["3", "7"],
+    "must_not_contain": []
+  },
+  {
+    "id": "multi_order_clarify",
+    "query": "我的订单到哪了？",
+    "expected_intent": "order_tracking",
+    "expected_order_id": null,
+    "expected_action": "CLARIFICATION",
+    "required_tools": [],
+    "must_contain": ["订单"],
+    "must_not_contain": []
+  },
+  {
+    "id": "followup_eta",
+    "setup_query": "ORD10001 现在到哪了？",
+    "query": "那什么时候能到？",
+    "expected_intent": "delivery_eta",
+    "expected_order_id": "ORD10001",
+    "required_tools": ["get_delivery"],
+    "must_contain": ["ORD10001"],
+    "must_not_contain": []
+  }
+]
