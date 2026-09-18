@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Voice Commerce — 电商语音客服</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="atmosphere" aria-hidden="true"></div>
+    <main class="shell">
+      <header class="brand">
+        <p class="brand-mark">Voice Commerce</p>
+        <p class="brand-sub">电商语音客服 · 文字与麦克风同一入口</p>
+        <div class="meta-row">
+          <span id="customerBadge">账号 —</span>
+          <label class="mute-toggle">
+            <input type="checkbox" id="muteToggle" />
+            静音播报
+          </label>
+        </div>
+      </header>
+
+      <section class="chat" aria-label="对话">
+        <div id="messages" class="messages" role="log" aria-live="polite"></div>
+        <p id="status" class="status" aria-live="polite">正在连接…</p>
+      </section>
+
+      <form id="composer" class="composer" autocomplete="off">
+        <input
+          id="textInput"
+          type="text"
+          name="message"
+          placeholder="输入问题，例如：我的最新订单在哪里？"
+          maxlength="500"
+        />
+        <button type="button" id="micBtn" class="mic" aria-pressed="false" title="按住说话">
+          按住说话
+        </button>
+        <button type="submit" id="sendBtn" class="send">发送</button>
+      </form>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
