@@ -8,9 +8,9 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 ENV_PATH = ROOT / ".env"
 
-# 先读项目根目录 .env；再读当前工作目录（防止从别的目录启动时漏读）
-load_dotenv(ENV_PATH)
-load_dotenv(Path.cwd() / ".env")
+# .env 优先：避免系统里空的 LLM_API_KEY= 挡住文件里的真实 Key
+load_dotenv(ENV_PATH, override=True)
+load_dotenv(Path.cwd() / ".env", override=True)
 
 DATA_DIR = ROOT / "data"
 TRACE_DIR = ROOT / "traces"

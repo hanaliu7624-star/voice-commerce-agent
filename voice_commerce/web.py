@@ -190,7 +190,12 @@ def main() -> None:
 
     import uvicorn
 
+    from voice_commerce.config import ENV_PATH, LLM_API_KEY, require_api_key
+
     logging.basicConfig(level=logging.INFO)
+    logging.info("项目 .env 路径: %s (存在=%s)", ENV_PATH, ENV_PATH.is_file())
+    logging.info("LLM_API_KEY 已加载: %s (长度=%s)", bool(LLM_API_KEY), len(LLM_API_KEY or ""))
+    require_api_key()  # 启动时立刻失败，避免打开网页后才报错
     require_db()
     uvicorn.run(
         "voice_commerce.web:app",
