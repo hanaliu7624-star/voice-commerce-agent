@@ -1,0 +1,304 @@
+:root {
+  --ink: #0f1c1a;
+  --ink-soft: #2a3f3b;
+  --paper: #f3efe6;
+  --foam: #e8f2ef;
+  --teal: #0d6b5c;
+  --teal-deep: #084f44;
+  --amber: #c47a1a;
+  --line: rgba(15, 28, 26, 0.12);
+  --user-bg: #d8ebe5;
+  --bot-bg: rgba(255, 255, 255, 0.72);
+  --danger: #a33b2b;
+  --shadow: 0 18px 50px rgba(8, 40, 34, 0.14);
+  --font-display: "Instrument Serif", "Songti SC", Georgia, serif;
+  --font-body: "DM Sans", "PingFang SC", "Noto Sans SC", sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.5;
+}
+
+.atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 80% 55% at 12% -10%, rgba(13, 107, 92, 0.28), transparent 55%),
+    radial-gradient(ellipse 60% 45% at 95% 15%, rgba(196, 122, 26, 0.18), transparent 50%),
+    linear-gradient(165deg, #eef6f3 0%, #f3efe6 42%, #ebe4d6 100%);
+}
+
+.shell {
+  width: min(720px, calc(100% - 2rem));
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: 2.25rem 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  animation: rise 0.7s ease both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.brand {
+  text-align: left;
+}
+
+.brand-mark {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 7vw, 3.4rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--teal-deep);
+  animation: brandIn 0.9s ease both;
+}
+
+@keyframes brandIn {
+  from {
+    opacity: 0;
+    letter-spacing: 0.08em;
+  }
+  to {
+    opacity: 1;
+    letter-spacing: -0.02em;
+  }
+}
+
+.brand-sub {
+  margin: 0.45rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.98rem;
+}
+
+.meta-row {
+  margin-top: 0.85rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: center;
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+}
+
+#customerBadge {
+  font-weight: 600;
+  color: var(--teal);
+}
+
+.mute-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.chat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: rgba(255, 255, 255, 0.35);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.1rem 1rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-height: 42vh;
+  max-height: min(58vh, 560px);
+}
+
+.bubble {
+  max-width: min(92%, 34rem);
+  padding: 0.75rem 0.95rem;
+  border-radius: 14px;
+  animation: bubbleIn 0.35s ease both;
+}
+
+@keyframes bubbleIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.bubble.user {
+  align-self: flex-end;
+  background: var(--user-bg);
+  border-bottom-right-radius: 4px;
+}
+
+.bubble.bot {
+  align-self: flex-start;
+  background: var(--bot-bg);
+  border: 1px solid var(--line);
+  border-bottom-left-radius: 4px;
+}
+
+.bubble .role {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 0.25rem;
+}
+
+.bubble .text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.bubble .meta {
+  margin-top: 0.45rem;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  opacity: 0.9;
+}
+
+.status {
+  margin: 0;
+  padding: 0.55rem 1rem 0.85rem;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  min-height: 1.6rem;
+}
+
+.status.error {
+  color: var(--danger);
+}
+
+.status.recording {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.composer {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.55rem;
+  align-items: stretch;
+}
+
+.composer input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  font: inherit;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.composer input:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(13, 107, 92, 0.15);
+}
+
+.composer button {
+  border: none;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.2s ease, opacity 0.2s ease;
+}
+
+.composer button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.composer button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.send {
+  background: var(--teal);
+  color: #f7fffc;
+}
+
+.send:hover:not(:disabled) {
+  background: var(--teal-deep);
+}
+
+.mic {
+  background: #fff8ee;
+  color: var(--amber);
+  border: 1px solid rgba(196, 122, 26, 0.35) !important;
+  min-width: 6.5rem;
+}
+
+.mic[aria-pressed="true"] {
+  background: var(--amber);
+  color: #fffaf2;
+  animation: pulse 1.1s ease infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(196, 122, 26, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(196, 122, 26, 0);
+  }
+}
+
+@media (max-width: 560px) {
+  .shell {
+    width: calc(100% - 1.25rem);
+    padding-top: 1.4rem;
+  }
+
+  .composer {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .composer input {
+    grid-column: 1 / -1;
+  }
+}
