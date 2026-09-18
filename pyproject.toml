@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "voice-commerce-agent"
 version = "0.1.0"
-description = "Voice Commerce Agent — 电商语音客服（文字 MVP）"
+description = "Voice Commerce Agent — 电商语音客服（文字 + LiveKit 语音壳）"
 requires-python = ">=3.11"
 dependencies = [
     "langchain>=0.3.27",
@@ -19,9 +19,13 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0.0"]
+voice = [
+    "livekit-agents[openai,silero]>=1.2.0",
+]
 
 [project.scripts]
 voice-commerce = "voice_commerce.cli:main"
+voice-commerce-voice = "voice_commerce.voice_agent:main"
 
 [tool.setuptools.packages.find]
 include = ["voice_commerce*", "domain*"]

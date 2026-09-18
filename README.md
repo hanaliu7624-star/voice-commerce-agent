@@ -1,6 +1,6 @@
 # Voice Commerce Agent
 
-开源电商语音客服 Agent。当前是 **文字 MVP（第 1 周）**：中文、云 API、本地 SQLite 模拟业务。语音（ASR/TTS）放在第 2 周，会复用同一套意图路由和 Tools。
+开源电商语音客服 Agent。中文、云 API、本地 SQLite 模拟业务。文字核（意图路由 / RAG / Tools）与 LiveKit 语音壳共用同一套 `CommerceAgent`。
 
 ## 原则
 
@@ -8,6 +8,7 @@
 - 模型不得编造 Tool 未返回的业务数据
 - 用户只能查询自己的订单
 - 每次回答写入 `traces/` JSON，可追溯 intent → 检索/工具 → 答案
+- 语音壳只做 ASR/TTS，不改写业务答案
 
 ## 准备
 
@@ -15,13 +16,13 @@
 cd D:\ai\电商语音ai
 python -m venv .venv
 .\.venv\Scripts\activate
-pip install -e ".[dev]"
+pip install -e ".[dev,voice]"
 copy .env.example .env
 ```
 
-在 `.env` 填入云 API Key。默认走阿里云百炼 OpenAI 兼容接口（`qwen-plus` + `text-embedding-v3`）。任何 OpenAI 兼容网关都可以改 `LLM_BASE_URL` / `LLM_MODEL`。
+在 `.env` 填入云 API Key。默认走 OpenAI 兼容接口。文字模型用 `LLM_MODEL` / `EMBEDDING_MODEL`；语音复用同一 `LLM_BASE_URL` / `LLM_API_KEY`，并配置 `STT_MODEL=whisper-1` / `TTS_MODEL=tts-1`（网关需支持 `audio/transcriptions` 与 `audio/speech`）。
 
-## 运行
+## 文字
 
 ```powershell
 python scripts/generate_data.py --seed 42
@@ -47,6 +48,26 @@ python eval/run_eval.py
 pytest -q
 ```
 
+## 语音（LiveKit console）
+
+无麦克风冒烟（跑一轮客服 + TTS 合成探针）：
+
+```powershell
+python -m voice_commerce.voice_agent --smoke --query "我的最新订单在哪里？"
+```
+
+本机麦克风 / 扬声器：
+
+```powershell
+python -m voice_commerce.voice_agent console
+```
+
+纯文本进语音管线（不采麦，适合排查）：
+
+```powershell
+python -m voice_commerce.voice_agent console --text
+```
+
 ## 演示账号
 
 用户 `CUS10001` 张三，固定订单：
@@ -60,7 +81,3 @@ pytest -q
 | ORD10005 | 历史已完成订单 |
 
 交互里输入 `/trace` 查看上一轮追溯，`/quit` 退出。
-
-## 第 2 周（未做）
-
-用 LiveKit Agents `console` 模式包一层中文 ASR/TTS 云服务，不改 Agent 核。
