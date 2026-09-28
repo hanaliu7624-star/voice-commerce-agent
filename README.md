@@ -1,6 +1,6 @@
 # Voice Commerce Agent
 
-开源电商语音客服 Agent。当前是 **文字 MVP（第 1 周）**：中文、云 API、本地 SQLite 模拟业务。语音（ASR/TTS）放在第 2 周，会复用同一套意图路由和 Tools。
+开源电商语音客服 Agent。中文、云 API、本地 SQLite 模拟业务。文字核（意图路由 / RAG / Tools）与网页对话框、LiveKit console 共用同一套 `CommerceAgent`。
 
 ## 原则
 
@@ -8,43 +8,67 @@
 - 模型不得编造 Tool 未返回的业务数据
 - 用户只能查询自己的订单
 - 每次回答写入 `traces/` JSON，可追溯 intent → 检索/工具 → 答案
+- 语音壳只做 ASR/TTS，不改写业务答案
+
+## ASR / TTS 是什么（白话）
+
+这两件事只负责**声音和文字互转**，不负责查订单：
+
+| 名词 | 人话 |
+|---|---|
+| **ASR / STT** | 把麦克风录音听写成文字（本项目用云端 `whisper-1`） |
+| **TTS** | 把客服文字念成可播放的声音（本项目用云端 `tts-1`） |
+
+网页路径：浏览器录音 → 上传到本机 FastAPI → Whisper 听写 → `CommerceAgent.ask` → TTS → 浏览器播放。  
+麦克风需要 **localhost** 或 **HTTPS**（浏览器安全策略）；局域网 HTTP 可能不给麦，可改用文字。
 
 ## 准备
 
-```powershell
-cd D:\ai\电商语音ai
+```bash
+cd /path/to/voice-commerce-agent
 python -m venv .venv
-.\.venv\Scripts\activate
-pip install -e ".[dev]"
-copy .env.example .env
+source .venv/bin/activate   # Windows: .\.venv\Scripts\activate
+pip install -e ".[dev,web]"
+# 若要用 LiveKit 本机 console，再装: pip install -e ".[voice]"
+cp .env.example .env        # Windows: copy .env.example .env
 ```
 
-在 `.env` 填入云 API Key。默认走阿里云百炼 OpenAI 兼容接口（`qwen-plus` + `text-embedding-v3`）。任何 OpenAI 兼容网关都可以改 `LLM_BASE_URL` / `LLM_MODEL`。
+在 `.env` 填入云 API Key。文字用 `LLM_MODEL` / `EMBEDDING_MODEL`；语音复用 `LLM_BASE_URL` / `LLM_API_KEY`，并配置 `STT_MODEL=whisper-1` / `TTS_MODEL=tts-1`。
 
-## 运行
+## 网页对话框（推荐体验）
 
-```powershell
+```bash
 python scripts/generate_data.py --seed 42
 python -m voice_commerce.cli --rebuild-index
-python -m voice_commerce.cli --customer CUS10001
+python -m voice_commerce.web
 ```
 
-单轮：
+浏览器打开 [http://127.0.0.1:7860](http://127.0.0.1:7860)：
 
-```powershell
+- 打字发送，或**按住「按住说话」**录音、松开发送
+- 回复会自动语音播报（可勾选「静音播报」）
+- 气泡下方显示 `intent` / `trace`，可对照 `traces/` 目录
+
+同一 WiFi 下同事可访问 `http://你的电脑局域网IP:7860`（本机防火墙需放行 7860）。  
+**这是 Demo，不要无防护裸奔公网。** 若要临时给外网朋友试：本机先启动网页，再用 [ngrok](https://ngrok.com/) 等工具把 7860 映射成 HTTPS 链接（麦克风在 HTTPS 下可用）。
+
+## 文字 CLI
+
+```bash
+python -m voice_commerce.cli --customer CUS10001
 python -m voice_commerce.cli --query "我的最新订单在哪里？"
 ```
 
-评测（会调用 LLM）：
+评测：`python eval/run_eval.py`  
+单元测试：`pytest -q`
 
-```powershell
-python eval/run_eval.py
-```
+## 语音（LiveKit console，可选）
 
-不依赖模型的数据/工具测试：
-
-```powershell
-pytest -q
+```bash
+pip install -e ".[voice]"
+python -m voice_commerce.voice_agent --smoke --query "我的最新订单在哪里？"
+python -m voice_commerce.voice_agent console
+python -m voice_commerce.voice_agent console --text
 ```
 
 ## 演示账号
@@ -59,8 +83,4 @@ pytest -q
 | ORD10004 | 已取消（问送达时间必须拒绝给 ETA） |
 | ORD10005 | 历史已完成订单 |
 
-交互里输入 `/trace` 查看上一轮追溯，`/quit` 退出。
-
-## 第 2 周（未做）
-
-用 LiveKit Agents `console` 模式包一层中文 ASR/TTS 云服务，不改 Agent 核。
+CLI 里输入 `/trace` 查看上一轮追溯，`/quit` 退出。

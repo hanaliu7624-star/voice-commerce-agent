@@ -99,10 +99,13 @@ def route_node(state: GraphState) -> dict[str, Any]:
     parsed = _parse_intent(str(content))
     intent = parsed.intent if parsed.intent in INTENT_ACTIONS else "help"
     confidence = parsed.confidence
-    order_id = parsed.order_id
-    match = ORDER_ID_RE.search(state["user_query"])
-    if match:
-        order_id = match.group(0).upper()
+    query = state["user_query"]
+    # 订单号只认用户原文；禁止路由器臆造 ORD 号。
+    match = ORDER_ID_RE.search(query)
+    order_id = match.group(0).upper() if match else None
+    # 「最新/最近」只认用户原文，禁止路由器误标 wants_latest 跳过澄清。
+    wants_latest = ("最新" in query) or ("最近" in query)
+    intent = _override_intent(query, intent)
 
     action = INTENT_ACTIONS[intent]
     if confidence < CONFIDENCE_CLARIFY:
@@ -114,10 +117,27 @@ def route_node(state: GraphState) -> dict[str, Any]:
         "intent": intent,
         "confidence": confidence,
         "order_id": order_id,
-        "wants_latest": parsed.wants_latest or ("最新" in state["user_query"] or "最近" in state["user_query"]),
+        "wants_latest": wants_latest,
         "action": action,
         "escalated": action == "ESCALATION",
     }
+
+
+def _override_intent(query: str, intent: str) -> str:
+    """对明确口语做确定性纠偏，减少相近意图抖动。"""
+    if "退款" in query:
+        if any(k in query for k in ("到账", "进度", "到哪儿了", "到哪了", "怎么还没")) and not any(
+            k in query for k in ("一般", "几天", "规则", "多久能")
+        ):
+            return "refund_status"
+        return intent
+    if any(k in query for k in ("还没送到", "还没到货", "为什么还没送", "延迟了", "延误", "物流延误")):
+        return "delivery_delay"
+    if any(k in query for k in ("什么时候能到", "什么时候送到", "何时能到", "预计到")):
+        return "delivery_eta"
+    if any(k in query for k in ("在哪里", "到哪了", "到哪儿了", "物流到哪")):
+        return "order_tracking"
+    return intent
 
 
 def resolve_order_id(state: GraphState) -> dict[str, Any]:
@@ -206,6 +226,71 @@ def tools_node(state: GraphState) -> dict[str, Any]:
     return {"tool_calls": calls}
 
 
+def _format_tool_answer(state: GraphState) -> str | None:
+    """事实类问题优先用工具结果拼答案，减少模型编造登录/订单信息。"""
+    if state["action"] not in {"TOOL", "TOOL_AND_RAG"}:
+        return None
+    calls = state.get("tool_calls") or []
+    if not calls:
+        return None
+    intent = state["intent"]
+    by_name = {c["name"]: c.get("result") or {} for c in calls}
+
+    order = by_name.get("get_order") or {}
+    delivery = by_name.get("get_delivery") or {}
+    refund = by_name.get("get_refund") or {}
+
+    if order and order.get("found") is False:
+        return f"在当前账号 {state['customer_id']} 下查不到订单 {order.get('order_id')}。请核对订单号，或说“最新一单”。"
+
+    if intent in {"order_tracking", "order_status", "payment_failed", "payment_status"} and order.get("found"):
+        parts = [
+            f"订单 {order['order_id']} 当前状态是 {order.get('status')}。",
+            f"商品：{order.get('product_name')}，金额 {order.get('amount')} {order.get('currency')}。",
+        ]
+        if order.get("payment_status"):
+            parts.append(f"支付状态：{order['payment_status']}。")
+        if order.get("status") == "CANCELLED":
+            parts.append("该订单已取消，不会再配送。")
+        shipment = delivery.get("shipment") if delivery.get("found") else None
+        if shipment:
+            parts.append(
+                f"物流状态：{shipment.get('status')}，承运商 {shipment.get('carrier')}，"
+                f"预计送达 {shipment.get('estimated_delivery_date') or '暂无'}。"
+            )
+        elif intent == "order_tracking":
+            parts.append(delivery.get("reason") or "当前还没有物流单。")
+        return "".join(parts)
+
+    if intent in {"delivery_status", "delivery_eta", "delivery_delay"}:
+        if order.get("found") and order.get("status") == "CANCELLED":
+            return f"订单 {order['order_id']} 已取消，无法安排配送，也不能告知到货时间。"
+        if delivery.get("found") and delivery.get("shipment"):
+            shipment = delivery["shipment"]
+            base = (
+                f"订单 {delivery['order_id']} 物流状态是 {shipment.get('status')}，"
+                f"承运商 {shipment.get('carrier')}，运单号 {shipment.get('tracking_number')}。"
+            )
+            if shipment.get("status") == "DELAYED":
+                return base + f"已超过预计送达日 {shipment.get('estimated_delivery_date')}，属于延迟件。"
+            if shipment.get("estimated_delivery_date"):
+                return base + f"预计送达日是 {shipment['estimated_delivery_date']}。"
+            return base
+        if delivery.get("found"):
+            return f"订单 {delivery.get('order_id')} {delivery.get('reason') or '暂无物流信息'}。"
+
+    if intent == "refund_status" and refund.get("found"):
+        if refund.get("refund"):
+            r = refund["refund"]
+            return (
+                f"订单 {refund['order_id']} 的退款单 {r.get('refund_id')} 当前状态是 {r.get('status')}，"
+                f"金额 {r.get('amount')} {r.get('currency')}，原因：{r.get('reason')}。"
+            )
+        return f"订单 {refund.get('order_id')} {refund.get('reason') or '没有退款单'}。"
+
+    return None
+
+
 def generate_node(state: GraphState) -> dict[str, Any]:
     action = state["action"]
     if action == "ESCALATION":
@@ -214,19 +299,31 @@ def generate_node(state: GraphState) -> dict[str, Any]:
     if action == "CLARIFICATION":
         orders = get_customer_orders(state["customer_id"])
         ids = "、".join(o["order_id"] + f"（{o['status']} {o['product_name']}）" for o in orders[:5]) or "暂无订单"
-        answer = f"我需要确认你要查哪一笔订单。你名下最近的订单有：{ids}。请告诉我订单号，或者说“最新一单”。"
+        answer = (
+            f"当前已登录账号 {state['customer_id']}。"
+            f"我需要确认你要查哪一笔订单。你名下最近的订单有：{ids}。请告诉我订单号，或者说“最新一单”。"
+        )
         return {"final_answer": answer}
     if action == "FALLBACK":
         answer = "我还没听清你的具体需求。你可以问订单物流、支付是否成功、退款进度，或退货退款规则。也可以说“转人工”。"
         return {"final_answer": answer}
     if action == "DIRECT":
         if state["intent"] == "greeting":
-            answer = "你好，我是电商客服助手。可以帮你查订单、物流、支付和退款，也可以说明退货退款规则。"
+            answer = (
+                f"你好，我是电商客服助手。当前账号 {state['customer_id']} 已登录。"
+                "可以帮你查订单、物流、支付和退款，也可以说明退货退款规则。"
+            )
         else:
             answer = "我可以查询你的订单、物流、支付失败原因和退款进度，也可以说明退货退款与配送规则。请直接说出问题。"
         return {"final_answer": answer}
 
+    factual = _format_tool_answer(state)
+    if factual and action == "TOOL":
+        return {"final_answer": factual}
+
     payload = {
+        "customer_id": state["customer_id"],
+        "authenticated": True,
         "intent": state["intent"],
         "action": action,
         "order_id": state.get("order_id"),
@@ -235,6 +332,7 @@ def generate_node(state: GraphState) -> dict[str, Any]:
             {"document_id": d.get("document_id"), "score": d.get("score"), "content": d.get("content")}
             for d in (state.get("retrieved_documents") or [])
         ],
+        "tool_summary": factual,
     }
     llm = _llm()
     message = llm.invoke(
